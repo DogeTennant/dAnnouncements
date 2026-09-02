@@ -1,0 +1,190 @@
+# Example announcements demonstrating the available features. Both start disabled so nothing
+# broadcasts out of the box - review, edit (in-game with /da line, or by hand + /da reload),
+# then /da toggle <id> to switch one on.
+announcements:
+  server_update:
+    enabled: false
+    once: false
+    permission: ""
+    schedule:
+      enabled: true
+      type: DAILY
+      time: "09:00"
+      interval-minutes: 60
+      day-of-month: 1
+    lines:
+      - "<gradient:#ffd166:#f77f00><bold>Server Update</bold></gradient>"
+      - "<white>We're rolling out new content this weekend!"
+      - "<gray>The entire changelog can be found: <white>[here](https://example.com/patch-notes)"
+    delivery:
+      chat:
+        enabled: true
+        border: true
+        border-char: "▬"
+        border-length: 46
+        border-color: "<dark_gray>"
+        center: true
+      title:
+        enabled: true
+        text: ""
+        subtitle: ""
+        fade-in: 10
+        stay: 70
+        fade-out: 20
+      actionbar:
+        enabled: false
+        text: ""
+      bossbar:
+        enabled: false
+        text: ""
+        color: YELLOW
+        overlay: PROGRESS
+        seconds: 8
+      sound:
+        enabled: true
+        name: ENTITY_PLAYER_LEVELUP
+        volume: 1.0
+        pitch: 1.0
+
+  welcome_message:
+    enabled: false
+    once: false
+    permission: ""
+    # No time-based schedule at all - "join" below is the only trigger for this one.
+    schedule:
+      enabled: false
+      type: DAILY
+      time: "09:00"
+      interval-minutes: 60
+      day-of-month: 1
+    join:
+      enabled: true
+      delay-seconds: 3   # wait 3s after join so this lands after other plugins' join messages
+      exclude-ops: true  # staff have seen this a thousand times
+      excluded-permissions: []
+    lines:
+      - "<gold><bold>Welcome to the server!</bold></gold>"
+      - "<white>[Click here to teleport to spawn](tp:world,0.5,65,0.5,0,0)"
+      - "<white>Or read the rules: [click here](cmd:/rules)"
+    delivery:
+      chat:
+        enabled: true
+        border: true
+        border-char: "▬"
+        border-length: 46
+        border-color: "<gold>"
+        center: true
+      title:
+        enabled: false
+        text: ""
+        subtitle: ""
+        fade-in: 10
+        stay: 60
+        fade-out: 20
+      actionbar:
+        enabled: false
+        text: ""
+      bossbar:
+        enabled: false
+        text: ""
+        color: YELLOW
+        overlay: PROGRESS
+        seconds: 8
+      sound:
+        enabled: true
+        name: ENTITY_PLAYER_LEVELUP
+        volume: 1.0
+        pitch: 1.0
+
+  wipe_reminder:
+    enabled: false
+    once: true
+    permission: ""
+    schedule:
+      enabled: true
+      type: SPECIFIC
+      time: "18:00"
+      interval-minutes: 60
+      day-of-month: 1
+      date: "2026-08-01"
+    lines:
+      - "<red><bold>Map Wipe Incoming</bold></red>"
+      - "<white>The season ends and a fresh map begins on <yellow>August 1st at 18:00<white>."
+    delivery:
+      chat:
+        enabled: true
+        border: true
+        border-char: "▬"
+        border-length: 46
+        border-color: "<red>"
+        center: true
+      title:
+        enabled: false
+        text: ""
+        subtitle: ""
+        fade-in: 10
+        stay: 60
+        fade-out: 20
+      actionbar:
+        enabled: true
+        text: "<red>Map wipe: <yellow>August 1st, 18:00"
+      bossbar:
+        enabled: true
+        text: "<red>Map Wipe - August 1st, 18:00"
+        color: RED
+        overlay: PROGRESS
+        seconds: 12
+      sound:
+        enabled: true
+        name: ENTITY_ENDER_DRAGON_GROWL
+        volume: 1.0
+        pitch: 1.0
+
+  peak_hours_reminder:
+    enabled: false
+    once: false
+    permission: ""
+    schedule:
+      enabled: true
+      type: DAILY
+      # "time" is ignored when "times" is set - list every clock time (24h) it should fire at each day.
+      time: "16:00"
+      times:
+        - "16:00"
+        - "18:00"
+        - "20:00"
+        - "22:00"
+      interval-minutes: 60
+      day-of-month: 1
+    lines:
+      - "<aqua><bold>Event Hours Are Live!</bold></aqua>"
+      - "<white>Join now for bonus drops until the next check-in."
+    delivery:
+      chat:
+        enabled: true
+        border: true
+        border-char: "▬"
+        border-length: 46
+        border-color: "<aqua>"
+        center: true
+      title:
+        enabled: false
+        text: ""
+        subtitle: ""
+        fade-in: 10
+        stay: 60
+        fade-out: 20
+      actionbar:
+        enabled: false
+        text: ""
+      bossbar:
+        enabled: false
+        text: ""
+        color: YELLOW
+        overlay: PROGRESS
+        seconds: 8
+      sound:
+        enabled: true
+        name: ENTITY_PLAYER_LEVELUP
+        volume: 1.0
+        pitch: 1.0

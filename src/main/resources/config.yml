@@ -1,0 +1,55 @@
+# Timezone used to evaluate all scheduled times below. Use "system" to follow the
+# server's timezone, or a valid Java ZoneId such as "Europe/Prague" or "America/New_York".
+timezone: system
+
+# How often the scheduler checks for due announcements. 20 ticks = 1 second.
+poll-interval-ticks: 20
+
+# Defaults applied to a brand new announcement created with /da create <id>.
+# Every one of these can be overridden per-announcement in announcements.yml.
+defaults:
+  chat:
+    enabled: true
+    border: true
+    border-char: "▬"
+    border-length: 46
+    border-color: "<dark_gray>"
+    center: true
+  title:
+    enabled: false
+    fade-in: 10
+    stay: 60
+    fade-out: 20
+  actionbar:
+    enabled: false
+  bossbar:
+    enabled: false
+    color: YELLOW      # PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE
+    overlay: PROGRESS   # PROGRESS, NOTCHED_6, NOTCHED_10, NOTCHED_12, NOTCHED_20
+    seconds: 8
+  sound:
+    enabled: true
+    name: ENTITY_PLAYER_LEVELUP
+    volume: 1.0
+    pitch: 1.0
+
+# Feedback messages for /dannouncements commands. MiniMessage formatting is supported.
+messages:
+  no-permission: "<red>You don't have permission to do that."
+  unknown-command: "<red>Unknown subcommand. Use <white>/da help<red> to see all commands."
+  reloaded: "<green>dAnnouncements reloaded - <white>{count}<green> announcement(s) loaded."
+  player-only: "<red>Only players can use that."
+  not-found: "<red>No announcement found with id <white>{id}<red>."
+  player-not-found: "<red>No online player found named <white>{name}<red>."
+  invalid-id: "<red>Invalid id <white>{id}<red> - use only letters, numbers, dashes and underscores."
+  already-exists: "<red>An announcement with id <white>{id}<red> already exists."
+  created: "<green>Created announcement <white>{id}<green> (disabled by default - add lines, then /da toggle {id})."
+  removed: "<green>Removed announcement <white>{id}<green>."
+  toggled: "<green>Announcement <white>{id}<green> is now {state}."
+  forced: "<green>Force-sent announcement <white>{id}<green> to <white>{count}<green> player(s)."
+  line-added: "<green>Added line #{index} to <white>{id}<green>."
+  line-set: "<green>Updated line #{index} of <white>{id}<green>."
+  line-removed: "<green>Removed line #{index} from <white>{id}<green>."
+  line-inserted: "<green>Inserted line #{index} into <white>{id}<green>."
+  invalid-index: "<red>Line #{index} doesn't exist. <white>{id}<red> has {count} line(s)."
+  usage: "<red>Usage: {usage}"

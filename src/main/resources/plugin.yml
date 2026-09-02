@@ -1,0 +1,54 @@
+name: dAnnouncements
+version: '${project.version}'
+main: com.dogetennant.dannouncements.DAnnouncements
+api-version: '1.21'
+authors:
+  - dogetennant
+description: Scheduled, eye-catching announcements for the important stuff - meant to run alongside your everyday broadcast plugin, not replace it.
+
+softdepend:
+  - PlaceholderAPI
+
+commands:
+  dannouncements:
+    description: Main dAnnouncements command.
+    usage: /dannouncements <subcommand>
+    aliases:
+      - da
+    permission: dannouncements.command
+    permission-message: <red>You don't have permission to do that.
+
+permissions:
+  dannouncements.command:
+    description: Allows typing the base /dannouncements command (individual subcommands are gated separately).
+    default: true
+  dannouncements.admin.reload:
+    description: Reload config and announcements from disk.
+    default: op
+  dannouncements.admin.list:
+    description: List all configured announcements.
+    default: op
+  dannouncements.admin.info:
+    description: View the full detail of a single announcement.
+    default: op
+  dannouncements.admin.create:
+    description: Create a new announcement.
+    default: op
+  dannouncements.admin.remove:
+    description: Delete an announcement.
+    default: op
+  dannouncements.admin.toggle:
+    description: Enable or disable an announcement.
+    default: op
+  dannouncements.admin.force:
+    description: Force-send an announcement immediately.
+    default: op
+  dannouncements.admin.line:
+    description: Add, edit, remove, or reorder announcement lines.
+    default: op
+  dannouncements.admin.join:
+    description: Configure an announcement's on-join trigger (on/off/delay).
+    default: op
+  dannouncements.tp:
+    description: Teleport self to exact coordinates via an announcement's [label](tp:...) link. Self-only, no entity selectors - safe to leave on for everyone.
+    default: true
