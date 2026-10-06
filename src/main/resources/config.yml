@@ -53,3 +53,4 @@ messages:
   line-inserted: "<green>Inserted line #{index} into <white>{id}<green>."
   invalid-index: "<red>Line #{index} doesn't exist. <white>{id}<red> has {count} line(s)."
   usage: "<red>Usage: {usage}"
+  tp-unknown-destination: "<red>That teleport destination isn't available."

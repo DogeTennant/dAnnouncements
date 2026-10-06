@@ -50,7 +50,7 @@ public class DAnnouncementsCommand implements CommandExecutor, TabCompleter {
                                        @NotNull String label, String[] args) {
         if (args.length == 1) {
             return registry.getAll().stream()
-                    .filter(sub -> sender.hasPermission(sub.getPermission()))
+                    .filter(sub -> sender.hasPermission(sub.getPermission()) && !sub.isHiddenFrom(sender))
                     .map(SubCommand::getName)
                     .filter(name -> name.startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());

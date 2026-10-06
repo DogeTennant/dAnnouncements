@@ -27,7 +27,7 @@ Base command `/dannouncements`, alias `/da`. Line indexes are 1-based.
 | `/da line insert <id> <index> <text...>` | `dannouncements.admin.line` | Insert at position |
 | `/da line remove <id> <index>` | `dannouncements.admin.line` | Delete |
 | `/da join <id> <on\|off\|delay> [seconds]` | `dannouncements.admin.join` | Configure on-join trigger |
-| `/da tp <world> <x> <y> <z> [yaw] [pitch]` | `dannouncements.tp` | Self-teleport, used by `tp:` links |
+| `/da tp <world> <x> <y> <z> [yaw] [pitch]` | `dannouncements.tp` | Self-teleport to a destination a `tp:` link publishes - see below |
 | `/da reload` | `dannouncements.admin.reload` | Reload config + announcements |
 
 ## Permissions
@@ -37,8 +37,19 @@ Base command `/dannouncements`, alias `/da`. Line indexes are 1-based.
 | `dannouncements.command` | true |
 | `dannouncements.tp` | true |
 | `dannouncements.admin.*` | op |
+| `dannouncements.admin.tp` | op |
 
-`/da tp` is self-only and coordinates-only - no entity selectors, can't move other players. That's why it's safe to leave on by default.
+### Why `dannouncements.tp` can be on by default
+
+A click link runs as the clicking player, so `tp:` links only work if ordinary players can run `/da tp`. That does **not** make it a free teleport:
+
+- A destination only works if some announcement publishes it through a `tp:` link (or a hand-written `/da tp` in a line). Anything else - a coordinate a player invented, or one left over from a line you since edited - is refused.
+- If that announcement has a `permission` set, the player needs it to follow the link, not just to see the announcement. A staff-only announcement's `tp:` link stays staff-only.
+- `/da tp` is hidden from `/da help` and tab-completion, and every refusal reads the same, so it can't be used to fish for world names.
+
+`dannouncements.admin.tp` (op) lifts all of that and turns `/da tp` back into an unrestricted self-teleport to any coordinates. Keep it to staff.
+
+Destinations are read live, so `/da reload` and `/da line` edits apply immediately. Two caveats: an announcement publishes its destinations whether or not it is `enabled` (so `/da force` on a draft still works), and a `tp:` link assembled by a PlaceholderAPI placeholder can't be matched - write the coordinates literally in the line.
 
 ## config.yml
 
@@ -121,6 +132,8 @@ MiniMessage tags, plus legacy `&` color codes. In any line:
 ```
 
 Bare URLs get linkified automatically. Lines containing a manual `<click:...>` tag are left untouched. PlaceholderAPI placeholders resolve per-player when the plugin is installed.
+
+Writing a `tp:` link is what makes that destination reachable by `/da tp` at all, so keep links to places you're happy for that announcement's audience to stand in - see [Permissions](#permissions).
 
 ## Warning
 

@@ -1,5 +1,7 @@
 package com.dogetennant.dannouncements.util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -8,10 +10,16 @@ import java.util.regex.Pattern;
 public final class LinkUtil {
 
     // [label](target) - the label is what's shown/clickable, target decides what clicking does:
-    //   tp:world,x,y,z[,yaw,pitch]  -> teleports the clicker via /da tp (self-only, no permission needed beyond ours)
+    //   tp:world,x,y,z[,yaw,pitch]  -> teleports the clicker via /da tp (self-only, and only to
+    //                                  destinations published here - see TpDestinations)
     //   cmd:/some command           -> runs the command as the clicking player (their own permissions apply)
     //   anything else               -> treated as a URL (open_url), with https:// assumed if no scheme given
     private static final Pattern MARKDOWN_LINK = Pattern.compile("\\[([^\\]]+)]\\(([^)]+)\\)");
+
+    // A literal /da tp written straight into a line. Lines carrying a hand-authored <click:...>
+    // tag skip autoLinkify() entirely, so those destinations have to be read out of the raw text.
+    private static final Pattern LITERAL_TP_COMMAND =
+            Pattern.compile("(?i)/(?:da|dannouncements)\\s+tp\\s+([^'\"<>)]+)");
 
     private static final Pattern URL_PATTERN =
             Pattern.compile("(?i)\\b((?:https?://|www\\.)[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+)");
@@ -34,6 +42,32 @@ public final class LinkUtil {
         if (containsClickTag(withMarkdownLinks)) return withMarkdownLinks;
 
         return linkifyBareUrls(withMarkdownLinks);
+    }
+
+    /**
+     * Every teleport destination this line offers, in the same "world x y z [yaw pitch]" form
+     * autoLinkify() hands to /da tp. Covers both tp: links and hand-written /da tp commands, so
+     * that whatever a player can click, TpDestinations can recognise - and nothing else.
+     */
+    public static List<String> extractTpTargets(String line) {
+        if (line == null || line.isEmpty()) return List.of();
+
+        List<String> targets = new ArrayList<>();
+
+        Matcher markdown = MARKDOWN_LINK.matcher(line);
+        while (markdown.find()) {
+            String target = markdown.group(2).trim();
+            if (target.regionMatches(true, 0, "tp:", 0, 3)) {
+                targets.add(normalizeCoords(target.substring(3)));
+            }
+        }
+
+        Matcher literal = LITERAL_TP_COMMAND.matcher(line);
+        while (literal.find()) {
+            targets.add(normalizeCoords(literal.group(1)));
+        }
+
+        return targets;
     }
 
     private static boolean containsClickTag(String line) {
@@ -61,7 +95,7 @@ public final class LinkUtil {
 
     private static void appendMarkdownTarget(StringBuilder sb, String target, String label) {
         if (target.regionMatches(true, 0, "tp:", 0, 3)) {
-            String coords = target.substring(3).trim().replace(",", " ").replaceAll("\\s+", " ");
+            String coords = normalizeCoords(target.substring(3));
             appendRunCommandTag(sb, "/da tp " + coords, "<gray>Click to teleport", label);
         } else if (target.regionMatches(true, 0, "cmd:", 0, 4)) {
             String command = target.substring(4).trim();
@@ -70,6 +104,11 @@ public final class LinkUtil {
         } else {
             appendOpenUrlTag(sb, normalizeUrl(target), label);
         }
+    }
+
+    /** "world, 0.5, 65, 0.5" and "world 0.5 65 0.5" have to end up as the same destination. */
+    private static String normalizeCoords(String raw) {
+        return raw.trim().replace(",", " ").replaceAll("\\s+", " ");
     }
 
     private static String linkifyBareUrls(String line) {

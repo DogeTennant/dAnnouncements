@@ -50,5 +50,8 @@ permissions:
     description: Configure an announcement's on-join trigger (on/off/delay).
     default: op
   dannouncements.tp:
-    description: Teleport self to exact coordinates via an announcement's [label](tp:...) link. Self-only, no entity selectors - safe to leave on for everyone.
+    description: Follow an announcement's [label](tp:...) link. Self-only, and limited to destinations an announcement actually publishes to that player - not a free teleport.
     default: true
+  dannouncements.admin.tp:
+    description: Use /da tp with any coordinates, skipping the published-destination check. Grants unrestricted self-teleport - keep it to staff.
+    default: op

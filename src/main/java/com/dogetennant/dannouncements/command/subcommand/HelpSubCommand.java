@@ -23,7 +23,7 @@ public class HelpSubCommand implements SubCommand {
         sender.sendMessage(ColorUtil.parse("<dark_gray><strikethrough>                                                  "));
         sender.sendMessage(ColorUtil.parse("<gold><bold>dAnnouncements <gray>- commands"));
         for (SubCommand sub : registry.getAll()) {
-            if (!sender.hasPermission(sub.getPermission())) continue;
+            if (!sender.hasPermission(sub.getPermission()) || sub.isHiddenFrom(sender)) continue;
             sender.sendMessage(ColorUtil.parse("<yellow>" + sub.getUsage()));
         }
         sender.sendMessage(ColorUtil.parse("<dark_gray><strikethrough>                                                  "));
