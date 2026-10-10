@@ -22,9 +22,7 @@ public class RemoveSubCommand implements SubCommand {
         String id = args[1];
         if (CommandUtil.requireAnnouncement(sender, id).isEmpty()) return;
 
-        DAnnouncements plugin = DAnnouncements.getInstance();
-        plugin.getAnnouncementConfigLoader().remove(id);
-        plugin.getScheduler().reload(plugin.getConfigManager().get());
+        if (!CommandUtil.saved(sender, DAnnouncements.getInstance().getAnnouncementConfigLoader().remove(id), id)) return;
 
         sender.sendMessage(ColorUtil.parse(Messages.get("removed", Map.of("id", id))));
     }

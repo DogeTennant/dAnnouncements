@@ -34,8 +34,13 @@ public class JoinAnnouncementListener implements Listener {
             if (delayTicks <= 0) {
                 dispatcher.dispatch(a, player);
             } else {
+                String id = a.id;
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (player.isOnline()) dispatcher.dispatch(a, player);
+                    if (!player.isOnline()) return;
+                    // as it is now: switched off, removed or reloaded during the delay
+                    loader.get(id)
+                            .filter(now -> now.enabled && now.join.enabled && isPermitted(now, player))
+                            .ifPresent(now -> dispatcher.dispatch(now, player));
                 }, delayTicks);
             }
         }

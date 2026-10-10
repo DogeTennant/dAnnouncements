@@ -48,6 +48,7 @@ public class DAnnouncements extends JavaPlugin {
         dispatcher = new AnnouncementDispatcher(this);
 
         scheduler = new AnnouncementScheduler(this, announcementConfigLoader, dispatcher, configManager.get());
+        announcementConfigLoader.setOnChange(scheduler::refresh);
         scheduler.load();
 
         getServer().getPluginManager().registerEvents(

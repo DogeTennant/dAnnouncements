@@ -49,7 +49,7 @@ A click link runs as the clicking player, so `tp:` links only work if ordinary p
 
 `dannouncements.admin.tp` (op) lifts all of that and turns `/da tp` back into an unrestricted self-teleport to any coordinates. Keep it to staff.
 
-Destinations are read live, so `/da reload` and `/da line` edits apply immediately. Two caveats: an announcement publishes its destinations whether or not it is `enabled` (so `/da force` on a draft still works), and a `tp:` link assembled by a PlaceholderAPI placeholder can't be matched - write the coordinates literally in the line.
+Destinations are read live, so `/da reload` and `/da line` edits apply immediately. A switched-off announcement publishes nothing, except for 30 minutes after it was sent - so the links of a `once` announcement (which switches itself off right after sending) and of a draft sent with `/da force` still work while players click them. A `tp:` link assembled by a PlaceholderAPI placeholder can't be matched - write the coordinates literally in the line.
 
 ## config.yml
 
@@ -119,7 +119,9 @@ announcements:
 
 `join` is independent of `schedule` - an announcement can fire only on join, only on a timer, or both.
 
-`SPECIFIC` announcements always disable themselves after firing. `once: true` does the same for the other types; for `DAILY` with multiple `times`, it waits until the last slot of the day.
+`SPECIFIC` announcements always disable themselves after firing. `once: true` does the same for the other types; for `DAILY` with multiple `times`, it waits until the last slot of the day. A `SPECIFIC` date missed while the server was off (or set in the past) is still sent if at most 10 minutes late; later than that it is switched off without sending, and the console says so.
+
+A schedule that cannot be followed - a time that isn't `00:00` to `23:59`, a `day` that isn't a weekday, a `day-of-month` outside 1 to 31, a missing or wrong `date` - is reported in the console and by `/da info`, and only that announcement is left unscheduled. Changing or switching one announcement doesn't restart the others' countdowns.
 
 ## Formatting and links
 
@@ -135,9 +137,9 @@ Bare URLs get linkified automatically. Lines containing a manual `<click:...>` t
 
 Writing a `tp:` link is what makes that destination reachable by `/da tp` at all, so keep links to places you're happy for that announcement's audience to stand in - see [Permissions](#permissions).
 
-## Warning
+## Editing by hand and in game
 
-In-game edits (`/da create`, `line`, `toggle`, `remove`, `join`) rewrite `announcements.yml` from memory, which strips comments from that file. Hand-editing plus `/da reload` preserves them.
+Both work together. An in-game edit (`/da create`, `line`, `toggle`, `remove`, `join`) reads `announcements.yml` again first, so what you changed by hand since the last `/da reload` is kept (and starts being used), and it changes only that announcement, in place - comments stay. If the file has a YAML error, nothing is saved over it: `/da reload` keeps the announcements loaded before, in-game edits are refused, and the console shows the error until you fix it.
 
 ## Building
 

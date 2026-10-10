@@ -1,6 +1,7 @@
 package com.dogetennant.dannouncements.util;
 
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
@@ -36,7 +37,15 @@ public final class YamlMergeUtil {
 
         YamlConfiguration bundled = YamlConfiguration.loadConfiguration(
                 new StringReader(String.join("\n", bundledLines)));
-        YamlConfiguration disk = YamlConfiguration.loadConfiguration(diskFile);
+        YamlConfiguration disk = new YamlConfiguration();
+        try {
+            disk.load(diskFile);
+        } catch (IOException | InvalidConfigurationException e) {
+            // read as empty, every section would look new and be appended - again on every start
+            LogUtil.warn("[" + logLabel + "] could not be read, so no new options are added until it is fixed: "
+                    + e.getMessage());
+            return;
+        }
 
         Set<String> diskTop = disk.getKeys(false);
         List<String> newSections = new ArrayList<>();

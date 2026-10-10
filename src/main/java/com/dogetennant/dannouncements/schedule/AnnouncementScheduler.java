@@ -10,41 +10,64 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AnnouncementScheduler {
 
+    /** A SPECIFIC date missed by at most this much (a restart right then) is still sent. */
+    static final Duration LATE_LIMIT = Duration.ofMinutes(10);
+
     private final Plugin plugin;
     private final AnnouncementConfigLoader loader;
     private final AnnouncementDispatcher dispatcher;
+    private final Clock clock;
 
     private ZoneId timezone;
     private long pollIntervalTicks;
 
     private final Map<String, Long> nextRuns = new ConcurrentHashMap<>();
+    /** The schedule each next run was worked out for: an unchanged one keeps its countdown. */
+    private final Map<String, String> scheduledAs = new HashMap<>();
+    /** Schedule problems already in the console, so each is reported once. */
+    private final Map<String, String> reported = new HashMap<>();
     private BukkitTask pollTask;
 
     public AnnouncementScheduler(Plugin plugin, AnnouncementConfigLoader loader,
                                   AnnouncementDispatcher dispatcher, MainConfig config) {
+        this(plugin, loader, dispatcher, config, Clock.systemUTC());
+    }
+
+    AnnouncementScheduler(Plugin plugin, AnnouncementConfigLoader loader,
+                          AnnouncementDispatcher dispatcher, MainConfig config, Clock clock) {
         this.plugin = plugin;
         this.loader = loader;
         this.dispatcher = dispatcher;
+        this.clock = clock;
         this.timezone = TimeUtil.resolveTimezone(config.timezone);
         this.pollIntervalTicks = Math.max(1, config.pollIntervalTicks);
     }
 
     public void load() {
         nextRuns.clear();
-        loader.getAll().values().forEach(this::scheduleIfActive);
+        scheduledAs.clear();
+        refresh();
 
         poll();
         pollTask = Bukkit.getScheduler().runTaskTimer(plugin, this::poll, pollIntervalTicks, pollIntervalTicks);
@@ -52,30 +75,88 @@ public class AnnouncementScheduler {
                 + nextRuns.size() + " scheduled announcement(s).");
     }
 
-    /** Called on /da reload - picks up config/timezone changes and recalculates every next-run. */
+    /**
+     * Called on /da reload - picks up config/timezone changes and announcement changes. A
+     * countdown in progress is kept unless its schedule (or the timezone) changed.
+     */
     public void reload(MainConfig config) {
+        ZoneId previous = timezone;
         this.timezone = TimeUtil.resolveTimezone(config.timezone);
         this.pollIntervalTicks = Math.max(1, config.pollIntervalTicks);
 
         if (pollTask != null) pollTask.cancel();
-        nextRuns.clear();
-        loader.getAll().values().forEach(this::scheduleIfActive);
-
-        pollTask = Bukkit.getScheduler().runTaskTimer(plugin, this::poll, pollIntervalTicks, pollIntervalTicks);
+        if (!timezone.equals(previous)) {
+            nextRuns.clear();
+            scheduledAs.clear();
+        }
+        reported.clear();                               // a reload shows every problem again
+        try {
+            refresh();
+        } finally {
+            pollTask = Bukkit.getScheduler().runTaskTimer(plugin, this::poll, pollIntervalTicks, pollIntervalTicks);
+        }
         poll();
+    }
+
+    /**
+     * Brings the next runs in line with the announcements: new or changed schedules are worked
+     * out, unchanged ones keep their countdown, switched-off ones are dropped. Called after every
+     * in-game change.
+     */
+    public void refresh() {
+        long now = clock.millis();
+        Set<String> active = new HashSet<>();
+        List<String> missed = new ArrayList<>();
+        for (Announcement a : loader.getAll().values()) {
+            if (!a.enabled || a.schedule == null || !a.schedule.isEnabled()) continue;
+            String problem = a.schedule.problem();
+            if (problem != null) {
+                if (!problem.equals(reported.put(a.id, problem))) {
+                    LogUtil.warn("Announcement '" + a.id + "' is not scheduled: " + problem + ".");
+                }
+                continue;
+            }
+            reported.remove(a.id);
+            String key = a.schedule.key();
+            if (key.equals(scheduledAs.get(a.id)) && nextRuns.containsKey(a.id)) {
+                active.add(a.id);
+                continue;
+            }
+            long next;
+            try {
+                next = calculateNextRun(a.schedule);
+            } catch (DateTimeException e) {
+                LogUtil.warn("Announcement '" + a.id + "' is not scheduled: " + e.getMessage() + ".");
+                continue;
+            }
+            if (a.schedule.getType() == ScheduleType.SPECIFIC && next < now - LATE_LIMIT.toMillis()) {
+                missed.add(a.id);
+                continue;
+            }
+            nextRuns.put(a.id, next);
+            scheduledAs.put(a.id, key);
+            active.add(a.id);
+        }
+        nextRuns.keySet().retainAll(active);
+        scheduledAs.keySet().retainAll(active);
+
+        for (String id : missed) {
+            LogUtil.warn("Announcement '" + id + "' was due more than " + LATE_LIMIT.toMinutes()
+                    + " minutes ago (the server was off or it was set in the past) - switched off without sending it.");
+            switchOff(id);
+        }
     }
 
     public Optional<Long> getNextRun(String id) {
         return Optional.ofNullable(nextRuns.get(id));
     }
 
-    private void scheduleIfActive(Announcement a) {
-        if (!a.enabled || a.schedule == null || !a.schedule.isEnabled()) return;
-        nextRuns.put(a.id, calculateNextRun(a.schedule));
+    public ZoneId getTimezone() {
+        return timezone;
     }
 
     private void poll() {
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
 
         for (Map.Entry<String, Long> entry : new ArrayList<>(nextRuns.entrySet())) {
             if (entry.getValue() > now) continue;
@@ -106,9 +187,10 @@ public class AnnouncementScheduler {
                     || (a.once && daySlotsExhausted);
 
             if (disableNow) {
-                a.enabled = false;
-                loader.put(a);
                 nextRuns.remove(id);
+                scheduledAs.remove(id);
+                a.enabled = false;                      // stays off even if the file cannot be saved
+                switchOff(id);
                 LogUtil.info("Announcement '" + id + "' fired once and has been auto-disabled.");
             } else {
                 nextRuns.put(id, next);
@@ -116,14 +198,27 @@ public class AnnouncementScheduler {
         }
     }
 
+    private void switchOff(String id) {
+        AnnouncementConfigLoader.Change change = loader.update(id, a -> {
+            a.enabled = false;
+            return true;
+        });
+        if (change != AnnouncementConfigLoader.Change.SAVED && change != AnnouncementConfigLoader.Change.NOT_FOUND) {
+            LogUtil.warn("Could not switch '" + id + "' off in announcements.yml (" + change
+                    + ") - it is off until the next reload.");
+            loader.get(id).ifPresent(a -> a.enabled = false);
+        }
+    }
+
     private boolean isSameLocalDate(long epochMs1, long epochMs2) {
-        LocalDate d1 = java.time.Instant.ofEpochMilli(epochMs1).atZone(timezone).toLocalDate();
-        LocalDate d2 = java.time.Instant.ofEpochMilli(epochMs2).atZone(timezone).toLocalDate();
+        LocalDate d1 = Instant.ofEpochMilli(epochMs1).atZone(timezone).toLocalDate();
+        LocalDate d2 = Instant.ofEpochMilli(epochMs2).atZone(timezone).toLocalDate();
         return d1.equals(d2);
     }
 
+    /** Only for schedules without a problem(). */
     private long calculateNextRun(AnnouncementSchedule schedule) {
-        ZonedDateTime now = ZonedDateTime.now(timezone);
+        ZonedDateTime now = ZonedDateTime.now(clock).withZoneSameInstant(timezone);
         ZonedDateTime next = switch (schedule.getType()) {
             case INTERVAL -> now.plusMinutes(schedule.getIntervalMinutes()).withSecond(0).withNano(0);
             case DAILY -> {
@@ -131,7 +226,7 @@ public class AnnouncementScheduler {
                 for (int[] slot : schedule.getEffectiveDailyTimes()) {
                     ZonedDateTime candidate = now.withHour(slot[0]).withMinute(slot[1])
                             .withSecond(0).withNano(0);
-                    if (candidate.isBefore(now)) candidate = candidate.plusDays(1);
+                    if (!candidate.isAfter(now)) candidate = candidate.plusDays(1);
                     if (best == null || candidate.isBefore(best)) best = candidate;
                 }
                 yield best;
@@ -142,13 +237,13 @@ public class AnnouncementScheduler {
                 ZonedDateTime candidate = now.with(target)
                         .withHour(schedule.getHour()).withMinute(schedule.getMinute())
                         .withSecond(0).withNano(0);
-                yield candidate.isBefore(now) ? candidate.plusWeeks(1) : candidate;
+                yield candidate.isAfter(now) ? candidate : candidate.plusWeeks(1);
             }
             case MONTHLY -> {
                 ZonedDateTime candidate = withClampedDayOfMonth(now, schedule.getDayOfMonth())
                         .withHour(schedule.getHour()).withMinute(schedule.getMinute())
                         .withSecond(0).withNano(0);
-                if (candidate.isBefore(now)) {
+                if (!candidate.isAfter(now)) {
                     ZonedDateTime nextMonthBase = now.plusMonths(1).withDayOfMonth(1);
                     candidate = withClampedDayOfMonth(nextMonthBase, schedule.getDayOfMonth())
                             .withHour(schedule.getHour()).withMinute(schedule.getMinute())
@@ -156,19 +251,8 @@ public class AnnouncementScheduler {
                 }
                 yield candidate;
             }
-            case SPECIFIC -> {
-                if (schedule.getSpecificDate() == null) yield now.plusYears(100);
-                try {
-                    LocalDate date = LocalDate.parse(schedule.getSpecificDate());
-                    LocalDateTime ldt = LocalDateTime.of(date,
-                            LocalTime.of(schedule.getHour(), schedule.getMinute()));
-                    yield ldt.atZone(timezone);
-                } catch (Exception e) {
-                    LogUtil.warn("Invalid schedule date '" + schedule.getSpecificDate()
-                            + "' (expected yyyy-MM-dd) - this announcement will never auto-fire.");
-                    yield now.plusYears(100);
-                }
-            }
+            case SPECIFIC -> LocalDateTime.of(LocalDate.parse(schedule.getSpecificDate()),
+                    LocalTime.of(schedule.getHour(), schedule.getMinute())).atZone(timezone);
         };
         return next.toInstant().toEpochMilli();
     }

@@ -10,6 +10,10 @@ import java.util.Map;
 
 public class ReloadSubCommand implements SubCommand {
 
+    /** Added after 1.0.0 - see Messages.getOrDefault for why the wording is here too. */
+    private static final String RELOAD_UNREADABLE = "<red>announcements.yml has an error (see the console) -"
+            + " still using the <white>{count}<red> announcement(s) loaded before.";
+
     @Override public String getName() { return "reload"; }
     @Override public String getPermission() { return "dannouncements.admin.reload"; }
     @Override public String getUsage() { return "/da reload"; }
@@ -18,10 +22,15 @@ public class ReloadSubCommand implements SubCommand {
     public void execute(CommandSender sender, String[] args) {
         DAnnouncements plugin = DAnnouncements.getInstance();
         plugin.getConfigManager().load();
-        plugin.getAnnouncementConfigLoader().load();
+        boolean read = plugin.getAnnouncementConfigLoader().load();
         plugin.getScheduler().reload(plugin.getConfigManager().get());
 
         int count = plugin.getAnnouncementConfigLoader().getAll().size();
+        if (!read) {
+            sender.sendMessage(ColorUtil.parse(Messages.getOrDefault("reload-unreadable", RELOAD_UNREADABLE,
+                    Map.of("count", String.valueOf(count)))));
+            return;
+        }
         sender.sendMessage(ColorUtil.parse(Messages.get("reloaded", Map.of("count", String.valueOf(count)))));
     }
 

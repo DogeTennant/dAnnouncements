@@ -37,7 +37,7 @@ public class CreateSubCommand implements SubCommand {
         }
 
         Announcement a = Announcement.createDefault(id, plugin.getConfigManager().get());
-        plugin.getAnnouncementConfigLoader().put(a);
+        if (!CommandUtil.saved(sender, plugin.getAnnouncementConfigLoader().add(a), id)) return;
 
         sender.sendMessage(ColorUtil.parse(Messages.get("created", Map.of("id", id))));
     }

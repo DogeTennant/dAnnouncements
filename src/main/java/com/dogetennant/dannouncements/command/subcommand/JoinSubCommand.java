@@ -8,6 +8,7 @@ import org.bukkit.command.CommandSender;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class JoinSubCommand implements SubCommand {
 
@@ -21,33 +22,33 @@ public class JoinSubCommand implements SubCommand {
         String id = args[1];
         String action = args[2].toLowerCase();
 
-        var found = CommandUtil.requireAnnouncement(sender, id);
-        if (found.isEmpty()) return;
-        Announcement a = found.get();
+        if (CommandUtil.requireAnnouncement(sender, id).isEmpty()) return;
 
+        // the number is checked before anything changes
         switch (action) {
             case "on" -> {
-                a.join.enabled = true;
+                Integer secs = null;
                 if (args.length >= 4) {
-                    Integer secs = parseSeconds(sender, args[3]);
+                    secs = parseSeconds(sender, args[3]);
                     if (secs == null) return;
-                    a.join.delaySeconds = secs;
                 }
-                save(a);
+                Integer delay = secs;
+                if (!save(sender, id, a -> {
+                    a.join.enabled = true;
+                    if (delay != null) a.join.delaySeconds = delay;
+                })) return;
                 sender.sendMessage(ColorUtil.parse("<green>Join trigger for <white>" + id + "<green> enabled"
-                        + (args.length >= 4 ? " with a <white>" + a.join.delaySeconds + "s<green> delay." : ".")));
+                        + (delay != null ? " with a <white>" + delay + "s<green> delay." : ".")));
             }
             case "off" -> {
-                a.join.enabled = false;
-                save(a);
+                if (!save(sender, id, a -> a.join.enabled = false)) return;
                 sender.sendMessage(ColorUtil.parse("<green>Join trigger for <white>" + id + "<green> disabled."));
             }
             case "delay" -> {
                 if (args.length < 4) { CommandUtil.sendUsage(sender, "/da join <id> delay <seconds>"); return; }
                 Integer secs = parseSeconds(sender, args[3]);
                 if (secs == null) return;
-                a.join.delaySeconds = secs;
-                save(a);
+                if (!save(sender, id, a -> a.join.delaySeconds = secs)) return;
                 sender.sendMessage(ColorUtil.parse("<green>Join delay for <white>" + id
                         + "<green> set to <white>" + secs + "s<green>."));
             }
@@ -66,8 +67,11 @@ public class JoinSubCommand implements SubCommand {
         }
     }
 
-    private void save(Announcement a) {
-        DAnnouncements.getInstance().getAnnouncementConfigLoader().put(a);
+    private boolean save(CommandSender sender, String id, Consumer<Announcement> edit) {
+        return CommandUtil.saved(sender, DAnnouncements.getInstance().getAnnouncementConfigLoader().update(id, a -> {
+            edit.accept(a);
+            return true;
+        }), id);
     }
 
     @Override

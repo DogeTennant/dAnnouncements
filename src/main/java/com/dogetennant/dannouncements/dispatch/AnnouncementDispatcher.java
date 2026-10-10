@@ -17,10 +17,14 @@ import org.bukkit.plugin.Plugin;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AnnouncementDispatcher {
 
     private final Plugin plugin;
+    /** When each announcement last reached someone (epoch ms): its links stay usable a while after. */
+    private final Map<String, Long> lastSent = new ConcurrentHashMap<>();
 
     public AnnouncementDispatcher(Plugin plugin) {
         this.plugin = plugin;
@@ -33,6 +37,7 @@ public class AnnouncementDispatcher {
     public int dispatch(Announcement a, Player target) {
         List<Player> recipients = target != null ? List.of(target) : onlinePermitted(a);
         if (recipients.isEmpty()) return 0;
+        lastSent.put(a.id, System.currentTimeMillis());
 
         Sound sound = resolveSound(a);
 
@@ -50,6 +55,12 @@ public class AnnouncementDispatcher {
         if (a.bossbar.enabled) sendBossbar(a, recipients);
 
         return recipients.size();
+    }
+
+    /** Whether the announcement reached anyone within the last {@code window}. */
+    public boolean sentWithin(String id, Duration window) {
+        Long sent = lastSent.get(id);
+        return sent != null && System.currentTimeMillis() - sent <= window.toMillis();
     }
 
     private List<Player> onlinePermitted(Announcement a) {

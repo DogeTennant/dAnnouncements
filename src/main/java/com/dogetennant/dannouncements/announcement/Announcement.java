@@ -171,13 +171,14 @@ public class Announcement {
         return a;
     }
 
+    /** Writes into the announcement's section of announcements.yml, changing only values, so comments stay. */
     public void writeTo(ConfigurationSection sec) {
         sec.set("enabled", enabled);
         sec.set("once", once);
         sec.set("permission", permission);
-        schedule.writeTo(sec.createSection("schedule"));
+        schedule.writeTo(section(sec, "schedule"));
 
-        ConfigurationSection joinSec = sec.createSection("join");
+        ConfigurationSection joinSec = section(sec, "join");
         joinSec.set("enabled", join.enabled);
         joinSec.set("delay-seconds", join.delaySeconds);
         joinSec.set("exclude-ops", join.excludeOps);
@@ -185,7 +186,7 @@ public class Announcement {
 
         sec.set("lines", lines);
 
-        ConfigurationSection chatSec = sec.createSection("delivery.chat");
+        ConfigurationSection chatSec = section(sec, "delivery.chat");
         chatSec.set("enabled", chat.enabled);
         chatSec.set("border", chat.border);
         chatSec.set("border-char", chat.borderChar);
@@ -193,7 +194,7 @@ public class Announcement {
         chatSec.set("border-color", chat.borderColor);
         chatSec.set("center", chat.center);
 
-        ConfigurationSection titleSec = sec.createSection("delivery.title");
+        ConfigurationSection titleSec = section(sec, "delivery.title");
         titleSec.set("enabled", title.enabled);
         titleSec.set("text", title.text);
         titleSec.set("subtitle", title.subtitle);
@@ -201,21 +202,27 @@ public class Announcement {
         titleSec.set("stay", title.stay);
         titleSec.set("fade-out", title.fadeOut);
 
-        ConfigurationSection actionbarSec = sec.createSection("delivery.actionbar");
+        ConfigurationSection actionbarSec = section(sec, "delivery.actionbar");
         actionbarSec.set("enabled", actionbar.enabled);
         actionbarSec.set("text", actionbar.text);
 
-        ConfigurationSection bossbarSec = sec.createSection("delivery.bossbar");
+        ConfigurationSection bossbarSec = section(sec, "delivery.bossbar");
         bossbarSec.set("enabled", bossbar.enabled);
         bossbarSec.set("text", bossbar.text);
         bossbarSec.set("color", bossbar.color);
         bossbarSec.set("overlay", bossbar.overlay);
         bossbarSec.set("seconds", bossbar.seconds);
 
-        ConfigurationSection soundSec = sec.createSection("delivery.sound");
+        ConfigurationSection soundSec = section(sec, "delivery.sound");
         soundSec.set("enabled", sound.enabled);
         soundSec.set("name", sound.name);
         soundSec.set("volume", sound.volume);
         soundSec.set("pitch", sound.pitch);
+    }
+
+    /** The existing section (its comments stay) or a new one. */
+    private static ConfigurationSection section(ConfigurationSection parent, String path) {
+        ConfigurationSection existing = parent.getConfigurationSection(path);
+        return existing != null ? existing : parent.createSection(path);
     }
 }

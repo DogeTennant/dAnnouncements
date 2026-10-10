@@ -1,8 +1,11 @@
 package com.dogetennant.dannouncements.announcement;
 
 import com.dogetennant.dannouncements.DAnnouncements;
+import com.dogetennant.dannouncements.dispatch.AnnouncementDispatcher;
 import com.dogetennant.dannouncements.util.LinkUtil;
 import org.bukkit.entity.Player;
+
+import java.time.Duration;
 
 /**
  * The gate behind /da tp: a player can only be sent somewhere an announcement actually
@@ -26,12 +29,21 @@ public final class TpDestinations {
         NO_PERMISSION
     }
 
+    /**
+     * How long a switched-off announcement's links keep working after it was sent - a "once"
+     * announcement switches itself off right after sending, just when players click its links.
+     */
+    static final Duration LINK_LIFETIME = Duration.ofMinutes(30);
+
     private TpDestinations() {}
 
     public static Result check(Player player, String world, double x, double y, double z) {
         boolean published = false;
+        AnnouncementDispatcher dispatcher = DAnnouncements.getInstance().getDispatcher();
 
         for (Announcement a : DAnnouncements.getInstance().getAnnouncementConfigLoader().getAll().values()) {
+            // a switched-off announcement offers nothing - unless it was sent a moment ago
+            if (!a.enabled && (dispatcher == null || !dispatcher.sentWithin(a.id, LINK_LIFETIME))) continue;
             for (String line : a.lines) {
                 for (String target : LinkUtil.extractTpTargets(line)) {
                     if (!matches(target, world, x, y, z)) continue;

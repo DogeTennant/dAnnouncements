@@ -4,7 +4,6 @@ import com.dogetennant.dannouncements.DAnnouncements;
 import com.dogetennant.dannouncements.announcement.Announcement;
 import com.dogetennant.dannouncements.command.CommandUtil;
 import com.dogetennant.dannouncements.util.ColorUtil;
-import com.dogetennant.dannouncements.util.TimeUtil;
 import org.bukkit.command.CommandSender;
 
 import java.time.Instant;
@@ -36,10 +35,14 @@ public class InfoSubCommand implements SubCommand {
 
         if (a.schedule.isEnabled()) {
             sender.sendMessage(ColorUtil.parse("<gray>Schedule: <white>" + describeSchedule(a)));
-            DAnnouncements.getInstance().getScheduler().getNextRun(a.id).ifPresentOrElse(
+            String problem = a.schedule.problem();
+            if (problem != null) {
+                sender.sendMessage(ColorUtil.parse("<gray>Next run: <red>not scheduled - ")
+                        .append(net.kyori.adventure.text.Component.text(problem)));
+            } else DAnnouncements.getInstance().getScheduler().getNextRun(a.id).ifPresentOrElse(
                     next -> {
-                        ZoneId tz = com.dogetennant.dannouncements.util.TimeUtil.resolveTimezone(
-                                DAnnouncements.getInstance().getConfigManager().get().timezone);
+                        // the scheduler's own (resolving it again would log it on every /da info)
+                        ZoneId tz = DAnnouncements.getInstance().getScheduler().getTimezone();
                         String when = Instant.ofEpochMilli(next).atZone(tz).format(FORMAT);
                         sender.sendMessage(ColorUtil.parse("<gray>Next run: <white>" + when));
                     },

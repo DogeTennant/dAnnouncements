@@ -1,7 +1,6 @@
 package com.dogetennant.dannouncements.command.subcommand;
 
 import com.dogetennant.dannouncements.DAnnouncements;
-import com.dogetennant.dannouncements.announcement.Announcement;
 import com.dogetennant.dannouncements.command.CommandUtil;
 import com.dogetennant.dannouncements.config.Messages;
 import com.dogetennant.dannouncements.util.ColorUtil;
@@ -21,18 +20,17 @@ public class ToggleSubCommand implements SubCommand {
     public void execute(CommandSender sender, String[] args) {
         if (args.length < 2) { CommandUtil.sendUsage(sender, getUsage()); return; }
         String id = args[1];
-        var found = CommandUtil.requireAnnouncement(sender, id);
-        if (found.isEmpty()) return;
+        if (CommandUtil.requireAnnouncement(sender, id).isEmpty()) return;
 
-        Announcement a = found.get();
-        a.enabled = !a.enabled;
-
-        DAnnouncements plugin = DAnnouncements.getInstance();
-        plugin.getAnnouncementConfigLoader().put(a);
-        plugin.getScheduler().reload(plugin.getConfigManager().get());
+        var loader = DAnnouncements.getInstance().getAnnouncementConfigLoader();
+        if (!CommandUtil.saved(sender, loader.update(id, a -> {
+            a.enabled = !a.enabled;
+            return true;
+        }), id)) return;
+        boolean enabled = loader.get(id).map(a -> a.enabled).orElse(false);
 
         sender.sendMessage(ColorUtil.parse(Messages.get("toggled",
-                Map.of("id", id, "state", a.enabled ? "<green>enabled" : "<red>disabled"))));
+                Map.of("id", id, "state", enabled ? "<green>enabled" : "<red>disabled"))));
     }
 
     @Override

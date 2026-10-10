@@ -54,3 +54,6 @@ messages:
   invalid-index: "<red>Line #{index} doesn't exist. <white>{id}<red> has {count} line(s)."
   usage: "<red>Usage: {usage}"
   tp-unknown-destination: "<red>That teleport destination isn't available."
+  file-unreadable: "<red>announcements.yml has an error (see the console), so nothing was changed. Fix it, then /da reload."
+  file-not-saved: "<red>announcements.yml could not be saved (see the console)."
+  reload-unreadable: "<red>announcements.yml has an error (see the console) - still using the <white>{count}<red> announcement(s) loaded before."

@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
+import java.util.function.Predicate;
 
 public class LineSubCommand implements SubCommand {
 
@@ -50,47 +51,55 @@ public class LineSubCommand implements SubCommand {
         }
     }
 
+    // Each change is made to the announcement as it is in the file now (see AnnouncementConfigLoader#update),
+    // so the line numbers are checked against that.
+
     private void add(CommandSender sender, Announcement a, String[] args) {
         if (args.length < 4) { CommandUtil.sendUsage(sender, "/da line add <id> <text...>"); return; }
         String text = joinFrom(args, 3);
-        a.lines.add(text);
-        save(a);
+        if (!save(sender, a.id, now -> now.lines.add(text))) return;
+        int count = DAnnouncements.getInstance().getAnnouncementConfigLoader().get(a.id).map(now -> now.lines.size()).orElse(0);
         sender.sendMessage(ColorUtil.parse(Messages.get("line-added",
-                Map.of("index", String.valueOf(a.lines.size()), "id", a.id))));
+                Map.of("index", String.valueOf(count), "id", a.id))));
     }
 
     private void set(CommandSender sender, Announcement a, String[] args) {
         if (args.length < 5) { CommandUtil.sendUsage(sender, "/da line set <id> <index> <text...>"); return; }
-        OptionalInt idx = CommandUtil.parseOneBasedIndex(sender, args[3], a.lines.size(), a.id);
-        if (idx.isEmpty()) return;
         String text = joinFrom(args, 4);
-        a.lines.set(idx.getAsInt() - 1, text);
-        save(a);
+        if (!save(sender, a.id, now -> {
+            OptionalInt idx = CommandUtil.parseOneBasedIndex(sender, args[3], now.lines.size(), now.id);
+            if (idx.isEmpty()) return false;
+            now.lines.set(idx.getAsInt() - 1, text);
+            return true;
+        })) return;
         sender.sendMessage(ColorUtil.parse(Messages.get("line-set", Map.of("index", args[3], "id", a.id))));
     }
 
     private void insert(CommandSender sender, Announcement a, String[] args) {
         if (args.length < 5) { CommandUtil.sendUsage(sender, "/da line insert <id> <index> <text...>"); return; }
-        int max = a.lines.size() + 1;
-        OptionalInt idx = CommandUtil.parseOneBasedIndex(sender, args[3], max, a.id);
-        if (idx.isEmpty()) return;
         String text = joinFrom(args, 4);
-        a.lines.add(idx.getAsInt() - 1, text);
-        save(a);
+        if (!save(sender, a.id, now -> {
+            OptionalInt idx = CommandUtil.parseOneBasedIndex(sender, args[3], now.lines.size() + 1, now.id);
+            if (idx.isEmpty()) return false;
+            now.lines.add(idx.getAsInt() - 1, text);
+            return true;
+        })) return;
         sender.sendMessage(ColorUtil.parse(Messages.get("line-inserted", Map.of("index", args[3], "id", a.id))));
     }
 
     private void remove(CommandSender sender, Announcement a, String[] args) {
         if (args.length < 4) { CommandUtil.sendUsage(sender, "/da line remove <id> <index>"); return; }
-        OptionalInt idx = CommandUtil.parseOneBasedIndex(sender, args[3], a.lines.size(), a.id);
-        if (idx.isEmpty()) return;
-        a.lines.remove(idx.getAsInt() - 1);
-        save(a);
+        if (!save(sender, a.id, now -> {
+            OptionalInt idx = CommandUtil.parseOneBasedIndex(sender, args[3], now.lines.size(), now.id);
+            if (idx.isEmpty()) return false;
+            now.lines.remove(idx.getAsInt() - 1);
+            return true;
+        })) return;
         sender.sendMessage(ColorUtil.parse(Messages.get("line-removed", Map.of("index", args[3], "id", a.id))));
     }
 
-    private void save(Announcement a) {
-        DAnnouncements.getInstance().getAnnouncementConfigLoader().put(a);
+    private boolean save(CommandSender sender, String id, Predicate<Announcement> edit) {
+        return CommandUtil.saved(sender, DAnnouncements.getInstance().getAnnouncementConfigLoader().update(id, edit), id);
     }
 
     private String joinFrom(String[] args, int startIndex) {
